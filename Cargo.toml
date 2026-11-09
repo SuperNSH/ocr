@@ -1,0 +1,10 @@
+[package]
+name = "nsh-ocr"
+version = "0.0.1"
+edition = "2024"
+license = "MIT"
+description = "Recognise text in images."
+repository = "https://github.com/SuperNSH/ocr"
+publish = false
+
+[dependencies]
