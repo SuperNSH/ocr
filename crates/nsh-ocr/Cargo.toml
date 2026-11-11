@@ -1,0 +1,54 @@
+[package]
+name = "nsh-ocr"
+description = "Recognise text in images for Native Shell apps: Apple Vision, Android ML Kit, Windows Media.Ocr and ocrs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+name = "nsh_ocr"
+path = "src/lib.rs"
+
+[dependencies]
+# The NSH pin: the prelude, `#[class]` and `JsObject`. Exactly 0.4.0.
+nsh-core = "0.4.0"
+# Newest stable verified on crates.io 2026-11-09.
+thiserror = "2.0.21"
+# Only the oneshot channel and the timer; the host provides the runtime.
+tokio = { version = "1.54.1", default-features = false, features = ["sync", "time"] }
+
+# Apple: Vision recognises text; core-graphics, image-io and core-foundation build the
+# CGImage it takes. Feature names verified against the 0.3.2 generated-crate sources.
+[target.'cfg(target_vendor = "apple")'.dependencies]
+objc2 = "0.6.5"
+objc2-vision = { version = "0.3.2", default-features = false, features = ["std", "VNRecognizeTextRequest", "VNRequest", "VNRequestHandler", "VNTypes", "VNObservation", "objc2-core-foundation", "objc2-core-graphics"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSDictionary", "NSError", "NSString"] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["std", "CFData"] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["std", "CGImage", "CGColorSpace", "CGDataProvider"] }
+objc2-image-io = { version = "0.3.2", default-features = false, features = ["std", "CGImageSource", "objc2-core-graphics"] }
+
+# Android: ML Kit text recognition v2 over JNI. ndk-context carries the JavaVM.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.22.4"
+ndk-context = "0.1.1"
+
+# Windows: Windows.Media.Ocr. `IAsyncOperation::join` blocks on the result; windows 0.62
+# uses windows-future 0.3.2, whose `std` feature provides it.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62.2", features = ["Media_Ocr", "Globalization", "Graphics_Imaging", "Foundation", "Storage_Streams"] }
+windows-future = { version = "0.3.2", features = ["std"] }
+
+# Linux and the web: the ocrs engine with caller-supplied models.
+[target.'cfg(any(target_os = "linux", target_arch = "wasm32"))'.dependencies]
+# ocrs breaks APIs across pre-1.0 releases; 0.14.0 is the verified pin.
+ocrs = "0.14.0"
+# default-features = false enables no model format; rten_format loads the .model bytes.
+rten = { version = "0.28", default-features = false, features = ["rten_format"] }
+# Only to decode Encoded bytes inside the ocrs backend.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+[dev-dependencies]
+tokio = { version = "1.54.1", default-features = false, features = ["rt", "time", "test-util"] }
