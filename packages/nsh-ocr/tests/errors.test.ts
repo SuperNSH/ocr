@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { expect, test } from "nsh/test";
 import { TextRecognizer, memoryBackend, type ImageInput, type RecognizedText } from "../src";
 import { MESSAGES, type OcrErrorCode } from "../src/errors";
 
@@ -31,112 +31,106 @@ const CODES: OcrErrorCode[] = [
   "ERR_OCR_BACKEND",
 ];
 
-describe("image validation", () => {
-  it("an RGBA size mismatch is refused as an invalid image", async () => {
-    const backend = memoryBackend();
-    const recognizer = new TextRecognizer({ backend });
-    // 2x2 RGBA needs 16 bytes; 15 is a torn read.
-    const torn = { width: 2, height: 2, data: new Uint8Array(15) };
+test("an RGBA size mismatch is refused as an invalid image", async () => {
+  const backend = memoryBackend();
+  const recognizer = new TextRecognizer({ backend });
+  // 2x2 RGBA needs 16 bytes; 15 is a torn read.
+  const torn = { width: 2, height: 2, data: new Uint8Array(15) };
+  await expect(recognizer.processImage(torn)).rejects.toMatchObject({
+    code: "ERR_OCR_INVALID_IMAGE",
+  });
+  expect(backend.started()).toBe(0);
+});
+
+test("zero dimensions are refused as an invalid image", async () => {
+  const backend = memoryBackend();
+  const recognizer = new TextRecognizer({ backend });
+  const zeroWidth = { width: 0, height: 2, data: new Uint8Array(0) };
+  const zeroHeight = { width: 2, height: 0, data: new Uint8Array(0) };
+  for (const torn of [zeroWidth, zeroHeight]) {
     await expect(recognizer.processImage(torn)).rejects.toMatchObject({
       code: "ERR_OCR_INVALID_IMAGE",
     });
-    expect(backend.started()).toBe(0);
-  });
+  }
+  expect(backend.started()).toBe(0);
+});
 
-  it("zero dimensions are refused as an invalid image", async () => {
-    const backend = memoryBackend();
-    const recognizer = new TextRecognizer({ backend });
-    const zeroWidth = { width: 0, height: 2, data: new Uint8Array(0) };
-    const zeroHeight = { width: 2, height: 0, data: new Uint8Array(0) };
-    for (const torn of [zeroWidth, zeroHeight]) {
-      await expect(recognizer.processImage(torn)).rejects.toMatchObject({
-        code: "ERR_OCR_INVALID_IMAGE",
-      });
-    }
-    expect(backend.started()).toBe(0);
+test("empty encoded bytes are refused as an invalid image", async () => {
+  const backend = memoryBackend();
+  const recognizer = new TextRecognizer({ backend });
+  await expect(recognizer.processImage({ encoded: new Uint8Array(0) })).rejects.toMatchObject({
+    code: "ERR_OCR_INVALID_IMAGE",
   });
+  expect(backend.started()).toBe(0);
+  // Non-empty bytes pass validation and reach the backend.
+  const call = recognizer.processImage(image());
+  await settle(() => backend.pending());
+  expect(backend.finishRecognition(text("decoded"))).toBe(true);
+  expect((await call).text).toBe("decoded");
+});
 
-  it("empty encoded bytes are refused as an invalid image", async () => {
-    const backend = memoryBackend();
-    const recognizer = new TextRecognizer({ backend });
-    await expect(recognizer.processImage({ encoded: new Uint8Array(0) })).rejects.toMatchObject({
-      code: "ERR_OCR_INVALID_IMAGE",
-    });
-    expect(backend.started()).toBe(0);
-    // Non-empty bytes pass validation and reach the backend.
+test("every kind reaches the caller with its code", async () => {
+  const backend = memoryBackend();
+  const recognizer = new TextRecognizer({ backend });
+  for (const code of CODES) {
     const call = recognizer.processImage(image());
     await settle(() => backend.pending());
-    expect(backend.finishRecognition(text("decoded"))).toBe(true);
-    expect((await call).text).toBe("decoded");
+    expect(backend.finishRecognition(code)).toBe(true);
+    await expect(call).rejects.toMatchObject({ code });
+  }
+});
+
+test("every kind has a distinct code", () => {
+  expect(new Set(CODES).size).toBe(CODES.length);
+  for (const code of CODES) {
+    expect(MESSAGES[code].length).toBeGreaterThan(0);
+  }
+});
+
+test("a platform status is kept with its error", async () => {
+  const backend = memoryBackend();
+  const recognizer = new TextRecognizer({ backend });
+  const call = recognizer.processImage(image());
+  await settle(() => backend.pending());
+  expect(backend.finishRecognition("ERR_OCR_BACKEND")).toBe(true);
+  // The status itself stays on the Rust side; the code and its frozen wording travel together.
+  await expect(call).rejects.toMatchObject({
+    code: "ERR_OCR_BACKEND",
+    message: MESSAGES["ERR_OCR_BACKEND"],
   });
 });
 
-describe("error kinds and codes", () => {
-  it("every kind reaches the caller with its code", async () => {
-    const backend = memoryBackend();
-    const recognizer = new TextRecognizer({ backend });
-    for (const code of CODES) {
-      const call = recognizer.processImage(image());
-      await settle(() => backend.pending());
-      expect(backend.finishRecognition(code)).toBe(true);
-      await expect(call).rejects.toMatchObject({ code });
-    }
+test("an unsupported script resolves with the unsupported language code", async () => {
+  const backend = memoryBackend({ failNext: "ERR_OCR_UNSUPPORTED_LANGUAGE" });
+  const recognizer = new TextRecognizer({ backend });
+  await expect(recognizer.processImage(image(), { script: "korean" })).rejects.toMatchObject({
+    code: "ERR_OCR_UNSUPPORTED_LANGUAGE",
   });
-
-  it("every kind has a distinct code", () => {
-    expect(new Set(CODES).size).toBe(CODES.length);
-    for (const code of CODES) {
-      expect(MESSAGES[code].length).toBeGreaterThan(0);
-    }
-  });
-
-  it("a platform status is kept with its error", async () => {
-    const backend = memoryBackend();
-    const recognizer = new TextRecognizer({ backend });
-    const call = recognizer.processImage(image());
-    await settle(() => backend.pending());
-    expect(backend.finishRecognition("ERR_OCR_BACKEND")).toBe(true);
-    // The status itself stays on the Rust side; the code and its frozen wording travel together.
-    await expect(call).rejects.toMatchObject({
-      code: "ERR_OCR_BACKEND",
-      message: MESSAGES["ERR_OCR_BACKEND"],
-    });
-  });
+  expect(backend.started()).toBe(0);
+  const call = recognizer.processImage(image());
+  await settle(() => backend.pending());
+  expect(backend.finishRecognition(text("runs"))).toBe(true);
+  expect((await call).text).toBe("runs");
 });
 
-describe("backend failures", () => {
-  it("an unsupported script resolves with the unsupported language code", async () => {
-    const backend = memoryBackend({ failNext: "ERR_OCR_UNSUPPORTED_LANGUAGE" });
-    const recognizer = new TextRecognizer({ backend });
-    await expect(recognizer.processImage(image(), { script: "korean" })).rejects.toMatchObject({
-      code: "ERR_OCR_UNSUPPORTED_LANGUAGE",
-    });
-    expect(backend.started()).toBe(0);
-    const call = recognizer.processImage(image());
-    await settle(() => backend.pending());
-    expect(backend.finishRecognition(text("runs"))).toBe(true);
-    expect((await call).text).toBe("runs");
-  });
+test("a backend engine failure resolves with the backend code", async () => {
+  const backend = memoryBackend();
+  const recognizer = new TextRecognizer({ backend });
+  const call = recognizer.processImage(image());
+  await settle(() => backend.pending());
+  expect(backend.finishRecognition("ERR_OCR_BACKEND")).toBe(true);
+  await expect(call).rejects.toMatchObject({ code: "ERR_OCR_BACKEND" });
+});
 
-  it("a backend engine failure resolves with the backend code", async () => {
-    const backend = memoryBackend();
-    const recognizer = new TextRecognizer({ backend });
-    const call = recognizer.processImage(image());
-    await settle(() => backend.pending());
-    expect(backend.finishRecognition("ERR_OCR_BACKEND")).toBe(true);
-    await expect(call).rejects.toMatchObject({ code: "ERR_OCR_BACKEND" });
+test("a model error resolves with the model code", async () => {
+  const backend = memoryBackend({ failNext: "ERR_OCR_MODEL_NOT_LOADED" });
+  const recognizer = new TextRecognizer({ backend });
+  await expect(recognizer.processImage(image())).rejects.toMatchObject({
+    code: "ERR_OCR_MODEL_NOT_LOADED",
   });
-
-  it("a model error resolves with the model code", async () => {
-    const backend = memoryBackend({ failNext: "ERR_OCR_MODEL_NOT_LOADED" });
-    const recognizer = new TextRecognizer({ backend });
-    await expect(recognizer.processImage(image())).rejects.toMatchObject({
-      code: "ERR_OCR_MODEL_NOT_LOADED",
-    });
-    expect(backend.started()).toBe(0);
-    const call = recognizer.processImage(image());
-    await settle(() => backend.pending());
-    expect(backend.finishRecognition(text("runs"))).toBe(true);
-    expect((await call).text).toBe("runs");
-  });
+  expect(backend.started()).toBe(0);
+  const call = recognizer.processImage(image());
+  await settle(() => backend.pending());
+  expect(backend.finishRecognition(text("runs"))).toBe(true);
+  expect((await call).text).toBe("runs");
 });

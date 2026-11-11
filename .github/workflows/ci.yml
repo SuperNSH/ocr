@@ -130,6 +130,11 @@ jobs:
           echo "$RUNNER_TEMP/gradle-8.10.2/bin" >> "$GITHUB_PATH"
       - name: Accept the Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Pin JDK 17 for Gradle
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
       - name: Build the shell APK
         env:
           NSH_VERSION_CODE: ${{ github.run_number }}

@@ -186,7 +186,9 @@ fn options_for_script(script: Script) -> OptionsSpec {
 
 /// Packs RGBA8 bytes into the ARGB_8888 ints `Bitmap.createBitmap` takes.
 fn rgba_to_argb(data: &[u8]) -> Vec<jint> {
-    data.chunks_exact(4)
+    data.as_chunks::<4>()
+        .0
+        .iter()
         .map(|px| {
             ((u32::from(px[3]) << 24)
                 | (u32::from(px[0]) << 16)
