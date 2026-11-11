@@ -27,12 +27,14 @@ impl ImageInput {
                 height,
                 data,
             } => {
-                // u64 math: on a 32-bit target the usize product would overflow.
+                // Checked u64 math: u32-extreme dimensions overflow even u64's product.
                 if *width == 0 || *height == 0 {
                     return Err(invalid_image());
                 }
-                let expected = u64::from(*width) * u64::from(*height) * 4;
-                if data.len() as u64 != expected {
+                let expected = u64::from(*width)
+                    .checked_mul(u64::from(*height))
+                    .and_then(|pixels| pixels.checked_mul(4));
+                if expected != Some(data.len() as u64) {
                     return Err(invalid_image());
                 }
                 Ok(())

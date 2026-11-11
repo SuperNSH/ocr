@@ -587,19 +587,19 @@ fn process<'local>(
 /// Creates the bridge object that carries the call's id.
 fn bridge_object<'local>(env: &mut Env<'local>, id: u64) -> Result<JObject<'local>, OcrError> {
     let sig = method(BRIDGE_CTOR)?;
-    env.new_object(
+    Ok(env.new_object(
         JNIString::new(BRIDGE_CLASS),
         MethodSignature::from(&sig),
         &[JValue::Long(id as jlong)],
-    )
+    )?)
 }
 
 /// Arms one task's listeners; `Err` leaves nothing started and `done` uncalled, and the client
 /// is closed on every failure path, because `getClient` has already created it.
-fn arm(
-    env: &mut Env<'_>,
-    client: JObject<'_>,
-    input: &JObject<'_>,
+fn arm<'local>(
+    env: &mut Env<'local>,
+    client: JObject<'local>,
+    input: &JObject<'local>,
     done: RecognitionDone,
 ) -> Result<(), OcrError> {
     let client = env.new_global_ref(client)?;
