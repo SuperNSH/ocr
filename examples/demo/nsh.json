@@ -1,0 +1,8 @@
+{
+  "name": "OCR demo",
+  "id": "dev.supernsh.ocr.demo",
+  "version": "0.1.0",
+  "build": 1,
+  "rust": "../../crates/nsh-ocr",
+  "capabilities": {}
+}

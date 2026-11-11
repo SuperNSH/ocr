@@ -1,0 +1,5 @@
+// The shell that carries ML Kit into the demo APK; NSH's dex, native library
+// and app bundle are merged in afterwards by merge-nsh-into-apk.sh.
+plugins {
+    id "com.android.application" version "8.7.3" apply false
+}

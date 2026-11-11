@@ -1,0 +1,33 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace = "dev.supernsh.ocr.demo"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "dev.supernsh.ocr.demo"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = (System.getenv("NSH_VERSION_CODE") ?: "1").toInteger()
+        versionName = "0.1.0"
+    }
+
+    buildFeatures {
+        buildConfig = false
+    }
+
+    packaging {
+        jniLibs {
+            // NSH's manifest keeps extractNativeLibs=false: .so stay uncompressed.
+            useLegacyPackaging = false
+        }
+    }
+}
+
+// Only the Latin model ships in the demo APK; the other scripts' recognizers
+// are not bundled and answer a coded error on the device.
+dependencies {
+    implementation "com.google.mlkit:text-recognition:16.0.1"
+}

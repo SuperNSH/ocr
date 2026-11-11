@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NSH 0.4.0's own Android manifest (nsh-cli/src/android.rs manifest_xml),
+     replicated so the shell APK starts the very same NSH activity. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application android:label="OCR demo"
+        android:extractNativeLibs="false"
+        android:enableOnBackInvokedCallback="true"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <meta-data android:name="com.longbridge.nsh.RUST" android:value="true" />
+        <!-- Serves the app's own files to the apps that open them
+             (`SystemUi.openPath`): the authority matches what
+             `FilesProvider.uriFor` builds. -->
+        <provider android:name="com.longbridge.nsh.FilesProvider"
+            android:authorities="dev.supernsh.ocr.demo.files"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+        <activity android:name="com.longbridge.nsh.AppActivity" android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
