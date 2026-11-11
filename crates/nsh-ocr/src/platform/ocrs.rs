@@ -231,7 +231,7 @@ fn run_recognition(engine: &OcrEngine, image: &ImageInput) -> Result<RecognizedT
         .map(|line| line.text.as_str())
         .collect::<Vec<_>>()
         .join("\n");
-    build_recognized_text(mapped, text)
+    Ok(build_recognized_text(mapped, text))
 }
 
 fn prepare_input(engine: &OcrEngine, image: &ImageInput) -> Result<ocrs::OcrInput, OcrError> {
@@ -351,7 +351,7 @@ fn union_rect(a: &Rect, b: &Rect) -> Rect {
 }
 
 /// Union of rects. Union with itself copies the first rect, so no Rect clone is needed.
-fn union_all(rects: impl Iterator<Item = &Rect>) -> Option<Rect> {
+fn union_all<'a>(rects: impl Iterator<Item = &'a Rect>) -> Option<Rect> {
     let mut union: Option<Rect> = None;
     for rect in rects {
         union = Some(match union {

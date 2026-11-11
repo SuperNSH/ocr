@@ -130,13 +130,14 @@ impl NativeTextRecognizer {
     /// Cancels every pending recognition. Resolves `true` when any call was pending.
     pub async fn cancel(this: Instance<Self>) -> Result<bool, JsError> {
         let recognizer = this.with(|native| native.recognizer.clone());
-        recognizer.cancel().await.map_err(into_js)
+        // cancel and close are infallible on the core; only their value crosses.
+        Ok(recognizer.cancel().await)
     }
 
     /// Closes the recognizer; every later call rejects with `ERR_OCR_CLOSED`.
     pub async fn close(this: Instance<Self>) -> Result<(), JsError> {
         let recognizer = this.with(|native| native.recognizer.clone());
-        recognizer.close().await.map_err(into_js)
+        Ok(recognizer.close().await)
     }
 }
 

@@ -6,8 +6,9 @@ mod android;
 #[cfg(target_vendor = "apple")]
 mod apple;
 // `self::` because the extern crate `ocrs` would otherwise be ambiguous with this module.
+// `pub(crate)`: lib.rs re-exports the engine's public surface on these targets.
 #[cfg(any(target_os = "linux", target_arch = "wasm32"))]
-mod ocrs;
+pub(crate) mod ocrs;
 #[cfg(not(any(
     target_vendor = "apple",
     target_os = "android",

@@ -254,7 +254,7 @@ fn find_vm() -> Result<*mut jni::sys::JavaVM, OcrError> {
 
 /// The application, which is the Android context `ndk-context` carries. Null before the runtime
 /// has created it.
-fn application(env: &mut Env<'_>) -> Result<JObject<'_>, OcrError> {
+fn application<'local>(env: &mut Env<'local>) -> Result<JObject<'local>, OcrError> {
     let application = static_object(
         env,
         ACTIVITY_THREAD,
@@ -570,11 +570,11 @@ fn close(env: &mut Env<'_>, client: &JObject<'_>) {
 }
 
 /// Starts the ML Kit task for the input.
-fn process(
-    env: &mut Env<'_>,
-    client: &JObject<'_>,
-    input: &JObject<'_>,
-) -> Result<JObject<'_>, OcrError> {
+fn process<'local>(
+    env: &mut Env<'local>,
+    client: &JObject<'local>,
+    input: &JObject<'local>,
+) -> Result<JObject<'local>, OcrError> {
     let sig = method(PROCESS)?;
     Ok(env
         .call_method(

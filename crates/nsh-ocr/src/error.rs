@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn every_kind_has_a_distinct_code() {
-        let codes: Vec<&'static str> = ALL.iter().map(|(kind, _)| kind.code()).collect();
+        let codes: Vec<&'static str> = ALL.iter().map(|(kind, _, _)| kind.code()).collect();
         let mut unique = codes.clone();
         unique.sort_unstable();
         unique.dedup();
