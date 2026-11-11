@@ -37,7 +37,7 @@ cd "$work/nsh"
 mv classes.dex classes2.dex
 # Stored (-0): the system maps .so in place; extractNativeLibs is false.
 zip -q -X "$work/merged.apk" classes2.dex
-zip -q -X -0 "$work/merged.apk" lib
+zip -q -X -0 -r "$work/merged.apk" lib
 zip -q -X -r "$work/merged.apk" assets
 
 "$bt/zipalign" -f -P 16 4 "$work/merged.apk" "$work/aligned.apk"
