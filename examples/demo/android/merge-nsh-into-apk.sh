@@ -7,7 +7,8 @@ set -euo pipefail
 
 nsh_apk="$1"
 shell_apk="$2"
-out_apk="$3"
+# Absolute from the start: the script cd's into its work dir below.
+out_apk="$(cd "$(dirname -- "$3")" && pwd)/$(basename -- "$3")"
 
 sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 if [ -z "$sdk" ]; then
@@ -30,8 +31,9 @@ test -d "$work/nsh/lib"
 test -d "$work/nsh/assets"
 
 cp "$shell_apk" "$work/merged.apk"
-# The shell's signature dies with the merge; drop it before re-signing.
-zip -q -X -d "$work/merged.apk" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.EC' 'META-INF/*.MF' || true
+# The shell's signature dies with the merge; drop it before re-signing. Modern
+# AGP signs v2-only, so often there is nothing to delete — that is fine.
+zip -q -X -d "$work/merged.apk" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.EC' 'META-INF/*.MF' 2>/dev/null || true
 
 cd "$work/nsh"
 mv classes.dex classes2.dex
