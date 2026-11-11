@@ -22,6 +22,16 @@ function waited(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Marks a call's rejection as handled at creation: cancel, close and the
+ * watchdog settle it before its `await` attaches, and the harness fails runs
+ * on rejections nobody has caught yet.
+ */
+function guarded<T>(call: Promise<T>): Promise<T> {
+  call.catch(() => {});
+  return call;
+}
+
 test("a call resolves once with the recognized text", async () => {
   const backend = memoryBackend();
   const recognizer = new TextRecognizer({ backend });
@@ -57,9 +67,9 @@ test("concurrent calls each resolve once", async () => {
 test("cancel resolves pending calls with the cancelled code", async () => {
   const backend = memoryBackend();
   const recognizer = new TextRecognizer({ backend });
-  const first = recognizer.processImage(image());
+  const first = guarded(recognizer.processImage(image()));
   await settle(() => backend.pending());
-  const second = recognizer.processImage(image());
+  const second = guarded(recognizer.processImage(image()));
   await settle(() => backend.started() === 2);
   expect(await recognizer.cancel()).toBe(true);
   await expect(first).rejects.toMatchObject({ code: "ERR_OCR_CANCELLED" });
@@ -75,7 +85,7 @@ test("cancel with nothing pending reports false", async () => {
 test("a late answer after a cancel is dropped", async () => {
   const backend = memoryBackend();
   const recognizer = new TextRecognizer({ backend });
-  const call = recognizer.processImage(image());
+  const call = guarded(recognizer.processImage(image()));
   await settle(() => backend.pending());
   expect(await recognizer.cancel()).toBe(true);
   await expect(call).rejects.toMatchObject({ code: "ERR_OCR_CANCELLED" });
@@ -111,7 +121,7 @@ test("dropping the call asks the backend to cancel", async () => {
 test("a timeout resolves with the timeout code and the late answer is dropped", async () => {
   const backend = memoryBackend();
   const recognizer = new TextRecognizer({ backend });
-  const call = recognizer.processImage(image(), { timeoutMs: 25 });
+  const call = guarded(recognizer.processImage(image(), { timeoutMs: 25 }));
   await settle(() => backend.pending());
   // A real wait past the deadline lets the watchdog fire; there are no fake timers here.
   await waited(50);
@@ -159,9 +169,9 @@ test("close is idempotent", async () => {
 test("close resolves in-flight calls as cancelled", async () => {
   const backend = memoryBackend();
   const recognizer = new TextRecognizer({ backend });
-  const first = recognizer.processImage(image());
+  const first = guarded(recognizer.processImage(image()));
   await settle(() => backend.pending());
-  const second = recognizer.processImage(image());
+  const second = guarded(recognizer.processImage(image()));
   await settle(() => backend.started() === 2);
   await recognizer.close();
   await expect(first).rejects.toMatchObject({ code: "ERR_OCR_CANCELLED" });

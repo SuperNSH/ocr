@@ -31,13 +31,14 @@ test("the result tree mirrors the reference shapes", async () => {
   expect(backend.finishRecognition(referenceTree())).toBe(true);
   const got = await call;
   expect(got).toEqual(referenceTree());
-  // Spot checks down the tree: confidence and angle ride only where a platform gives them.
+  // Spot checks down the tree: confidence and angle ride only where a platform gives them,
+  // and corner points are their own data — here the word corners, not the line box's.
   const block = got.blocks[0];
   expect(block.boundingBox).toEqual({ left: 4, top: 8, right: 96, bottom: 20 });
   expect(block.cornerPoints).toEqual([
     { x: 4, y: 8 },
-    { x: 96, y: 8 },
-    { x: 96, y: 20 },
+    { x: 40, y: 8 },
+    { x: 40, y: 20 },
     { x: 4, y: 20 },
   ]);
   const line = block.lines[0];
