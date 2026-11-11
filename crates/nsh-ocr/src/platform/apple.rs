@@ -132,10 +132,10 @@ fn recognize(image: &ImageInput, language: &str) -> Result<RecognizedText, OcrEr
             // SAFETY: the observation is a live rectangle observation; the getter is plain.
             let box_rect = unsafe { observation.boundingBox() };
             let bounding_box = pixel_rect(
-                f64::from(box_rect.origin.x),
-                f64::from(box_rect.origin.y),
-                f64::from(box_rect.size.width),
-                f64::from(box_rect.size.height),
+                box_rect.origin.x,
+                box_rect.origin.y,
+                box_rect.size.width,
+                box_rect.size.height,
                 width,
                 height,
             );

@@ -76,6 +76,13 @@ pub struct OcrsBackend {
     engine: Arc<OcrEngine>,
 }
 
+// OcrEngine is not Debug and its models do not fit a debug dump.
+impl std::fmt::Debug for OcrsBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("OcrsBackend")
+    }
+}
+
 impl OcrsBackend {
     /// Creates a backend from detection and recognition model bytes. Both models
     /// are parsed eagerly; unreadable or incompatible bytes are

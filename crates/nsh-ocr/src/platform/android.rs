@@ -41,14 +41,14 @@ use std::{
     ffi::{c_char, c_int, c_void},
     panic::{AssertUnwindSafe, catch_unwind},
     sync::{
-        Mutex, PoisonError,
+        LazyLock, Mutex, PoisonError,
         atomic::{AtomicU64, Ordering},
     },
 };
 
 use jni::{
     Env, EnvUnowned, NativeMethod,
-    objects::{JClass, JObject, JString, JValue},
+    objects::{JObject, JString, JValue},
     refs::Global,
     signature::{FieldSignature, MethodSignature, RuntimeFieldSignature, RuntimeMethodSignature},
     strings::JNIString,
@@ -82,15 +82,16 @@ unsafe extern "C" {
 /// bionic's `RTLD_NOW`.
 const RTLD_NOW: c_int = 2;
 
-/// `JNI_GetCreatedJavaVMs`, found by name in `libnativehelper`.
-type GetCreatedVms = unsafe extern "C" fn(*mut jni::sys::JavaVM, jsize, *mut jsize) -> jint;
+/// `JNI_GetCreatedJavaVMs`, found by name in `libnativehelper`. The out-parameter is the
+/// VM-pointer buffer the JNI specification declares.
+type GetCreatedVms = unsafe extern "C" fn(*mut *mut jni::sys::JavaVM, jsize, *mut jsize) -> jint;
 
 /// Set once `ndk-context` holds the VM and the application. It can be set only once.
 static CONTEXT: Mutex<bool> = Mutex::new(false);
 /// Guards the one `RegisterNatives` call for the bridge class.
 static BRIDGE: Mutex<bool> = Mutex::new(false);
 /// The calls waiting for their one listener answer, by the id the bridge object carries.
-static CALLS: Mutex<HashMap<u64, Pending>> = Mutex::new(HashMap::new());
+static CALLS: LazyLock<Mutex<HashMap<u64, Pending>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 /// Hands out the id each recognition passes to its bridge object.
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -289,13 +290,10 @@ fn ensure_context() -> Result<(), OcrError> {
     // SAFETY: the pointer came from the runtime's own `JNI_GetCreatedJavaVMs`, and a VM lives
     // as long as the process.
     let context = unsafe { JavaVM::from_raw(vm) }.attach_current_thread(|env| {
+        let app = application(env)?;
         // The global reference lives as long as the process, which is what `ndk-context`
         // assumes.
-        Ok::<_, OcrError>(
-            env.new_global_ref(application(env)?)?
-                .into_raw()
-                .cast::<c_void>(),
-        )
+        Ok::<_, OcrError>(env.new_global_ref(app)?.into_raw().cast::<c_void>())
     })?;
     // SAFETY: the VM and the application are the process's own, and the probe showed that
     // nothing is installed yet.
@@ -444,7 +442,7 @@ fn java_string(env: &Env<'_>, value: JObject<'_>) -> Result<String, OcrError> {
         return Ok(String::new());
     }
     let string = env.cast_local::<JString>(value)?;
-    Ok(env.get_string(string)?.to_string())
+    Ok(string.try_to_string(env)?)
 }
 
 /// A Java object's class in `Class.getName()` form.
@@ -462,7 +460,7 @@ fn bitmap<'local>(env: &mut Env<'local>, image: &ImageInput) -> Result<JObject<'
             // SAFETY: `jbyte` is i8 and has u8's layout; only the sign bit's meaning differs.
             let raw =
                 unsafe { std::slice::from_raw_parts(bytes.as_ptr().cast::<jbyte>(), bytes.len()) };
-            env.set_byte_array_region(&array, 0, raw)?;
+            array.set_region(env, 0, raw)?;
             let bitmap = static_object(
                 env,
                 BITMAP_FACTORY,
@@ -486,7 +484,7 @@ fn bitmap<'local>(env: &mut Env<'local>, image: &ImageInput) -> Result<JObject<'
         } => {
             let pixels = rgba_to_argb(data);
             let array = env.new_int_array(pixels.len())?;
-            env.set_int_array_region(&array, 0, &pixels)?;
+            array.set_region(env, 0, &pixels)?;
             let config = static_field_object(env, BITMAP_CONFIG, "ARGB_8888", CONFIG_FIELD)?;
             static_object(
                 env,
@@ -587,7 +585,7 @@ fn process<'local>(
 }
 
 /// Creates the bridge object that carries the call's id.
-fn bridge_object(env: &mut Env<'_>, id: u64) -> Result<JObject<'_>, OcrError> {
+fn bridge_object<'local>(env: &mut Env<'local>, id: u64) -> Result<JObject<'local>, OcrError> {
     let sig = method(BRIDGE_CTOR)?;
     env.new_object(
         JNIString::new(BRIDGE_CLASS),
@@ -692,7 +690,8 @@ fn start(
     register_bridge(env)?;
     let bitmap = bitmap(env, image)?;
     let input = input_image(env, &bitmap)?;
-    arm(env, recognizer(env, script)?, &input, done)
+    let client = recognizer(env, script)?;
+    arm(env, client, &input, done)
 }
 
 /// Runs `answer` and hands its result to the waiting call's `done`, closing the client. The
@@ -796,9 +795,11 @@ fn list_get<'local>(
 
 /// ML Kit's `Text` as the crate's result tree.
 fn read_text(env: &mut Env<'_>, text: &JObject<'_>) -> Result<RecognizedText, OcrError> {
+    let full_text = object_of(env, text, "getText", STRING_RETURN)?;
+    let blocks = object_of(env, text, "getTextBlocks", GET_LIST)?;
     Ok(RecognizedText {
-        text: java_string(env, object_of(env, text, "getText", STRING_RETURN)?)?,
-        blocks: read_blocks(env, &object_of(env, text, "getTextBlocks", GET_LIST)?)?,
+        text: java_string(env, full_text)?,
+        blocks: read_blocks(env, &blocks)?,
     })
 }
 
@@ -808,8 +809,9 @@ fn read_blocks(env: &mut Env<'_>, blocks: &JObject<'_>) -> Result<Vec<TextBlock>
     for index in 0..count {
         let block = list_get(env, blocks, index)?;
         let lines = object_of(env, &block, "getLines", GET_LIST)?;
+        let text = object_of(env, &block, "getText", STRING_RETURN)?;
         out.push(TextBlock {
-            text: java_string(env, object_of(env, &block, "getText", STRING_RETURN)?)?,
+            text: java_string(env, text)?,
             lines: read_lines(env, &lines)?,
             bounding_box: rect_of(env, &block)?,
             languages: languages_of(env, &block)?,
@@ -825,8 +827,9 @@ fn read_lines(env: &mut Env<'_>, lines: &JObject<'_>) -> Result<Vec<TextLine>, O
     for index in 0..count {
         let line = list_get(env, lines, index)?;
         let elements = object_of(env, &line, "getElements", GET_LIST)?;
+        let text = object_of(env, &line, "getText", STRING_RETURN)?;
         out.push(TextLine {
-            text: java_string(env, object_of(env, &line, "getText", STRING_RETURN)?)?,
+            text: java_string(env, text)?,
             elements: read_elements(env, &elements)?,
             bounding_box: rect_of(env, &line)?,
             languages: languages_of(env, &line)?,
@@ -844,8 +847,9 @@ fn read_elements(env: &mut Env<'_>, elements: &JObject<'_>) -> Result<Vec<TextEl
     for index in 0..count {
         let element = list_get(env, elements, index)?;
         let symbols = object_of(env, &element, "getSymbols", GET_LIST)?;
+        let text = object_of(env, &element, "getText", STRING_RETURN)?;
         out.push(TextElement {
-            text: java_string(env, object_of(env, &element, "getText", STRING_RETURN)?)?,
+            text: java_string(env, text)?,
             symbols: read_symbols(env, &symbols)?,
             bounding_box: rect_of(env, &element)?,
             languages: languages_of(env, &element)?,
@@ -862,8 +866,9 @@ fn read_symbols(env: &mut Env<'_>, symbols: &JObject<'_>) -> Result<Vec<TextSymb
     let mut out = Vec::with_capacity(count);
     for index in 0..count {
         let symbol = list_get(env, symbols, index)?;
+        let text = object_of(env, &symbol, "getText", STRING_RETURN)?;
         out.push(TextSymbol {
-            text: java_string(env, object_of(env, &symbol, "getText", STRING_RETURN)?)?,
+            text: java_string(env, text)?,
             bounding_box: rect_of(env, &symbol)?,
             languages: languages_of(env, &symbol)?,
             corner_points: points_of(env, &symbol)?,
@@ -926,10 +931,8 @@ fn points_of(env: &mut Env<'_>, node: &JObject<'_>) -> Result<Vec<Point>, OcrErr
 
 /// ML Kit reports one recognized language per node; the crate's tree keeps it in a list.
 fn languages_of(env: &mut Env<'_>, node: &JObject<'_>) -> Result<Vec<String>, OcrError> {
-    Ok(vec![java_string(
-        env,
-        object_of(env, node, "getRecognizedLanguage", STRING_RETURN)?,
-    )?])
+    let language = object_of(env, node, "getRecognizedLanguage", STRING_RETURN)?;
+    Ok(vec![java_string(env, language)?])
 }
 
 /// A boxed `java.lang.Float` getter; ML Kit gives confidence and angle only where it has them.
@@ -972,6 +975,7 @@ impl Backend for NativeBackend {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .drain()
+            .map(|(_, pending)| pending)
             .collect();
         if pending.is_empty() {
             return;

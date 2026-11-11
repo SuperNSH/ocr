@@ -137,7 +137,8 @@ impl NativeTextRecognizer {
     /// Closes the recognizer; every later call rejects with `ERR_OCR_CLOSED`.
     pub async fn close(this: Instance<Self>) -> Result<(), JsError> {
         let recognizer = this.with(|native| native.recognizer.clone());
-        Ok(recognizer.close().await)
+        recognizer.close().await;
+        Ok(())
     }
 }
 

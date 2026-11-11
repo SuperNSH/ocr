@@ -53,7 +53,9 @@ struct RawWord {
 /// Length is a multiple of four: `ImageInput::validate` already enforced
 /// `data.len() == width * height * 4`, so `chunks_exact` never drops a pixel.
 fn rgba_to_bgra(rgba: &[u8]) -> Vec<u8> {
-    rgba.chunks_exact(4)
+    rgba.as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|pixel| [pixel[2], pixel[1], pixel[0], pixel[3]])
         .collect()
 }
@@ -96,7 +98,7 @@ fn union_rects(rects: &[Rect]) -> Rect {
         .iter()
         .fold(None, |covering: Option<Rect>, rect| {
             Some(match covering {
-                None => rect.clone(),
+                None => *rect,
                 Some(c) => Rect {
                     left: c.left.min(rect.left),
                     top: c.top.min(rect.top),
@@ -130,7 +132,7 @@ fn assemble_result(text: String, language: &str, lines: Vec<RawLine>) -> Recogni
     let mapped: Vec<TextLine> = lines
         .into_iter()
         .map(|line| {
-            let boxes: Vec<Rect> = line.words.iter().map(|word| word.rect.clone()).collect();
+            let boxes: Vec<Rect> = line.words.iter().map(|word| word.rect).collect();
             let bounding_box = union_rects(&boxes);
             let corners = corner_points(&bounding_box);
             TextLine {
@@ -159,10 +161,7 @@ fn assemble_result(text: String, language: &str, lines: Vec<RawLine>) -> Recogni
             }
         })
         .collect();
-    let block_boxes: Vec<Rect> = mapped
-        .iter()
-        .map(|line| line.bounding_box.clone())
-        .collect();
+    let block_boxes: Vec<Rect> = mapped.iter().map(|line| line.bounding_box).collect();
     let block_box = union_rects(&block_boxes);
     let block_corners = corner_points(&block_box);
     let block = TextBlock {
@@ -315,7 +314,8 @@ impl Backend for NativeBackend {
                 .unwrap_or_else(|_| Err(OcrError::new(ErrorKind::Backend)));
             done(answer);
         };
-        let _ = nsh_core::prelude::blocking(work);
+        // The returned handle is a future; dropping it detaches the worker.
+        drop(nsh_core::prelude::blocking(work));
         Ok(())
     }
 

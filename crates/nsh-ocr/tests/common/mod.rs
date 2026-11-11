@@ -50,7 +50,7 @@ pub fn spawn_process(
 }
 
 /// Returns a finished call's error, without needing `Debug` on the result tree.
-pub fn expect_error(answer: Result<RecognizedText, OcrError>) -> OcrError {
+pub fn expect_error<T>(answer: Result<T, OcrError>) -> OcrError {
     match answer {
         Ok(_) => panic!("the call resolved with text, not an error"),
         Err(error) => error,
