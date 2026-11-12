@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- NSH 0.4.0's own Android manifest (nsh-cli/src/android.rs manifest_xml),
+<!-- NSH 0.5.0's own Android manifest (nsh-cli/src/android.rs manifest_xml),
      replicated so the shell APK starts the very same NSH activity. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Text actions (Translate and the like) the selection menu offers,
+        as TextView's: Android 11+ hides other apps' activities otherwise. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
     <application android:label="OCR demo"
         android:extractNativeLibs="false"
         android:enableOnBackInvokedCallback="true"

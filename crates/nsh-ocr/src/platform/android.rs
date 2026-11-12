@@ -30,7 +30,7 @@
 //! }
 //! ```
 //!
-//! NSH 0.4.0 writes the Android packaging itself and offers no way to add Java, so the app
+//! NSH 0.5.0 writes the Android packaging itself and offers no way to add Java, so the app
 //! adds the class to the generated project, the way `nsh-biometrics` documents adding the
 //! biometric permission. Without those classes recognition answers `ERR_OCR_NOT_AVAILABLE`.
 

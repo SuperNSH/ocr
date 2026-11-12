@@ -15,7 +15,7 @@ The gates, all in `.github/workflows/ci.yml`:
 - `cargo fmt --all -- --check` (ubuntu-latest).
 - `cargo clippy -p nsh-ocr --all-targets --all-features -- -D warnings`, then `cargo test -p nsh-ocr --all-features --no-fail-fast`, on ubuntu-latest, macos-latest and windows-latest, fail-fast off.
 - Cross-target clippy — `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-linux-android` (biometrics' NDK env block) and `wasm32-unknown-unknown` — with `cargo clippy -p nsh-ocr --target <target> --all-features -- -D warnings`.
-- TypeScript in `packages/nsh-ocr` under NSH v0.4.0: `nsh check`; `nsh build` with no warning in its log; `nsh test`.
+- TypeScript in `packages/nsh-ocr` under NSH v0.5.0: `nsh check`; `nsh build` with no warning in its log; `nsh test`.
 
 The rules behind the gates:
 

@@ -8,7 +8,7 @@ Read before any code was written. `.refs/` is git-ignored and never built or run
 
 1. `https://github.com/flutter-ml/google_ml_kit_flutter` — the Flutter reference. `packages/google_mlkit_text_recognition/lib/src/text_recognizer.dart`: `TextRecognizer({script})`, `processImage(InputImage) -> RecognizedText {text, blocks}`, `close()`, `TextRecognitionScript {latin, chinese, devanagiri, japanese, korean}`, and the `TextBlock`/`TextLine`/`TextElement`/`TextSymbol` tree with `boundingBox`, `recognizedLanguages`, `cornerPoints`, and Android-only `confidence`/`angle`.
 2. `https://github.com/robertknight/ocrs` — the pure-Rust engine. `ocrs 0.14.0`: `OcrEngine::new(OcrEngineParams {detection_model, recognition_model, ...})`, `prepare_input(ImageSource)`, `get_text() -> Result<String, OcrError>`, `OcrErrorKind {DetectionModelNotLoaded, RecognitionModelNotLoaded, IncompatibleModel, InferenceFailed}`, results as `TextLine`/`TextWord`/`TextItem`/`TextChar`. Models come as files the app ships; the engine takes raw pixels, not paths.
-3. `https://github.com/longbridge/nsh` (NSH main) — the crates we wrap. `nsh-core` 0.4.0 gives `#[class]`, `#[derive(JsObject)]`, `#[native_module]`, `JsError.with_code`; `runtime/fs.rs` shows binary data crossing the TS↔Rust bridge; `runtime/image.rs` shows how NSH names image values.
+3. `https://github.com/longbridge/nsh` (NSH main) — the crates we wrap. `nsh-core` 0.5.0 gives `#[class]`, `#[derive(JsObject)]`, `#[native_module]`, `JsError.with_code`; `runtime/fs.rs` shows binary data crossing the TS↔Rust bridge; `runtime/image.rs` shows how NSH names image values.
 4. `https://github.com/SuperNSH/biometrics` — the org layout this repo copies: `crates/nsh-<name>` (Rust: `error.rs` coded errors, `backend.rs` trait, `fake.rs` scripted mock, `native.rs` TSX class, `platform/` per-target backends) and `packages/nsh-<name>` (TypeScript mirror with `rustBackend()`, `memoryBackend()`, the same error codes), with CI running format, a three-OS Rust matrix, cross-target checks and `nsh check/build/test`.
 5. The React Native reference, found and verified — see the next entry.
 
@@ -32,9 +32,9 @@ Rejected: `agoldis/react-native-mlkit-ocr` — archived by its owner on 2025-12-
 
 These three entries resolve the scaffold's open decisions 1–3 (NSH version, library choice, platforms in scope).
 
-## NSH is pinned to 0.4.0
+## NSH is pinned to 0.5.0
 
-`nsh-core = "0.4.0"` from crates.io, like biometrics; CI installs the NSH CLI at `NSH_VERSION: v0.4.0`. `longbridge/nsh` `main` is ahead of it, so anything read in `.refs/nsh` is checked against the 0.4.0 tag before it is relied on.
+`nsh-core = "0.5.0"` from crates.io; CI installs the NSH CLI at `NSH_VERSION: v0.5.0`. The pin moved from 0.4.0 on 2026-11-12. `longbridge/nsh` `main` is ahead of the release, so anything read in `.refs/nsh` is checked against the v0.5.0 tag before it is relied on.
 
 ## The input is encoded bytes or raw RGBA
 
@@ -46,7 +46,7 @@ These three entries resolve the scaffold's open decisions 1–3 (NSH version, li
 
 ## The demo APK is a Gradle shell around NSH's APK
 
-NSH 0.4.0 writes the Android APK itself and offers no way to add Java code or
+NSH 0.5.0 writes the Android APK itself and offers no way to add Java code or
 libraries, but the Android bridge needs both: the `dev.supernsh.ocr.NativeCallback`
 class (source in `crates/nsh-ocr/src/platform/android.rs`) and ML Kit's
 artifacts, which carry Android resources a hand merge cannot combine. So CI
