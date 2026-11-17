@@ -4,3 +4,5 @@ Cargo.lock
 .refs/
 .zcode/workflow-drafts/
 .nsh/
+# The demo's ocrs models: examples/demo/fetch-models.sh downloads them, pinned by checksum.
+examples/demo/assets/*.onnx

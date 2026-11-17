@@ -1,5 +1,14 @@
 import { mount, signal, Text, View } from "nsh";
-import { OcrError, TextRecognizer, rustBackend, type RgbaImage } from "../../packages/nsh-ocr/src";
+import {
+  OcrError,
+  TextRecognizer,
+  rustBackend,
+  useOcrsModels,
+  type RgbaImage,
+} from "../../packages/nsh-ocr/src";
+// The `?url` imports ship the model files with the app and give their `asset:/` URLs.
+import detectionModelUrl from "./assets/text-detection.onnx?url";
+import recognitionModelUrl from "./assets/text-recognition.onnx?url";
 
 /** The device's OCR engine, through the Rust crate. */
 const recognizer = new TextRecognizer({ backend: rustBackend() });
@@ -9,6 +18,9 @@ const result = signal("Not checked yet");
 
 /** The engine's languages, once supportedLanguages answers. */
 const languages = signal("Checking languages");
+
+/** The model files' state: the Linux and web engines need them, the others' are built in. */
+const models = signal("Loading models");
 
 function codeOf(error: unknown): string {
   return error instanceof OcrError ? error.code : "unknown error";
@@ -74,10 +86,31 @@ recognizer
     (error: unknown) => languages.set(codeOf(error)),
   );
 
+async function loadModels(): Promise<void> {
+  try {
+    const [detection, recognition] = await Promise.all([
+      fetch(detectionModelUrl).then((response) => response.arrayBuffer()),
+      fetch(recognitionModelUrl).then((response) => response.arrayBuffer()),
+    ]);
+    await useOcrsModels(new Uint8Array(detection), new Uint8Array(recognition));
+    models.set("Models loaded");
+  } catch (error: unknown) {
+    // The Apple, Android and Windows engines are built in; they need no model files.
+    if (error instanceof OcrError && error.code === "ERR_OCR_NOT_AVAILABLE") {
+      models.set("Models not needed");
+      return;
+    }
+    models.set(codeOf(error));
+  }
+}
+
+loadModels();
+
 function App() {
   return (
     <View class="flex-1 gap-4 p-4">
       <Text testID="languages" class="text-foreground">{languages()}</Text>
+      <Text testID="models" class="text-foreground">{models()}</Text>
       <Text testID="result" class="text-foreground">{result()}</Text>
       <Text testID="recognize" role="button" onPress={recognize} class="rounded-(--radius) bg-muted px-3 py-2">
         Recognize
