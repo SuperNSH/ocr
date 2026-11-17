@@ -14,17 +14,17 @@ export const workflow = {
   repo: "SuperNSH/ocr",
   gates: [
     "cargo fmt --all -- --check",
-    "cargo clippy --all-targets -- -D warnings",
-    "cargo test --all-targets",
+    "cargo clippy -p nsh-ocr --all-targets --all-features -- -D warnings",
+    "cargo test -p nsh-ocr --all-features --no-fail-fast",
   ],
   areas: [
     {
       name: "ocr",
       phases: ["implement", "audit", "unit-tests", "device-test", "vision", "smoke"],
       status: {
-        "implement": "not-started",
-        "audit": "not-started",
-        "unit-tests": "not-started",
+        "implement": "done",
+        "audit": "done",
+        "unit-tests": "done",
         "device-test": "not-started",
         "vision": "not-started",
         "smoke": "not-started",
