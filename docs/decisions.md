@@ -46,14 +46,36 @@ These three entries resolve the scaffold's open decisions 1–3 (NSH version, li
 
 ## The demo APK is a Gradle shell around NSH's APK
 
-NSH 0.5.0 writes the Android APK itself and offers no way to add Java code or
-libraries, but the Android bridge needs both: the `dev.supernsh.ocr.NativeCallback`
-class (source in `crates/nsh-ocr/src/platform/android.rs`) and ML Kit's
-artifacts, which carry Android resources a hand merge cannot combine. So CI
-builds a thin Gradle app (`examples/demo/android/`) that carries ML Kit and the
-callback class, then `merge-nsh-into-apk.sh` zips NSH's `classes.dex` (as
-`classes2.dex`), `lib/` and `assets/` into it, re-aligns and re-signs. The
-manifest replicates NSH's own (`nsh-cli/src/android.rs` `manifest_xml`) so the
-same `com.longbridge.nsh.AppActivity` starts. Only the Latin model ships in the
-demo APK (`com.google.mlkit:text-recognition` 16.0.1); the other scripts'
+The demo is packaged for nine targets (macOS, Linux and Windows on both
+architectures, the iOS simulator, Android, the web); this shell is the android
+entry of that matrix. NSH 0.5.0 writes the Android APK itself and offers no way
+to add Java code or libraries, but the Android bridge needs both: the
+`dev.supernsh.ocr.NativeCallback` class (source in
+`crates/nsh-ocr/src/platform/android.rs`) and ML Kit's artifacts, which carry
+Android resources a hand merge cannot combine. So CI builds a thin Gradle app
+(`examples/demo/android/`) that carries ML Kit and the callback class, then
+`merge-nsh-into-apk.sh` zips NSH's `classes.dex` (as `classes2.dex`), `lib/` and
+`assets/` into it, re-aligns and re-signs. The manifest replicates NSH's own
+(`nsh-cli/src/android.rs` `manifest_xml`) so the same
+`com.longbridge.nsh.AppActivity` starts. Only the Latin model ships in the demo
+APK (`com.google.mlkit:text-recognition` 16.0.1); the other scripts'
 recognizers are not bundled and answer a coded error on the device.
+
+## The demo bundles the ocrs models as app assets
+
+The only public copies of ocrs' model files sit on S3 without CORS headers, and
+GitHub release downloads send none either, so a web demo cannot fetch them at
+runtime. The app imports them with `?url` and fetches their `asset:/` URLs.
+`examples/demo/fetch-models.sh` downloads the two files pinned by sha256 —
+S3's URLs are not guaranteed stable (ocrs' own download script says so) — and
+the files are gitignored to keep binary weight out of the repo; a fresh
+checkout runs the script once before building or testing the demo, and CI does
+that in every job that touches the demo. Every platform's demo build carries
+the files, but only the Linux and web engines read them.
+
+## The web demo replaces the status page on Pages
+
+The static status page in `site/` is deleted. CI's `pages` job deploys the
+demo's web build to https://supernsh.github.io/ocr/ from the same artifact the
+release takes, so the site now runs real recognition instead of stating one.
+NSH's relative asset paths make the repository-name subpath work.

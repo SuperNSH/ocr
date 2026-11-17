@@ -14,8 +14,8 @@ The gates, all in `.github/workflows/ci.yml`:
 
 - `cargo fmt --all -- --check` (ubuntu-latest).
 - `cargo clippy -p nsh-ocr --all-targets --all-features -- -D warnings`, then `cargo test -p nsh-ocr --all-features --no-fail-fast`, on ubuntu-latest, macos-latest and windows-latest, fail-fast off.
-- Cross-target clippy — `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-linux-android` (biometrics' NDK env block) and `wasm32-unknown-unknown` — with `cargo clippy -p nsh-ocr --target <target> --all-features -- -D warnings`.
-- TypeScript in `packages/nsh-ocr` under NSH v0.5.1: `nsh check`; `nsh build` with no warning in its log; `nsh test`.
+- Cross-target clippy — `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-linux-android` (biometrics' NDK env block) and `wasm32-unknown-unknown` — with `cargo clippy -p nsh-ocr --target <target> --all-targets --all-features -- -D warnings`. `--all-targets` parses each bridge's inline unit tests on its own target, where no runner can run them (the android and wasm bridges' only CI check).
+- TypeScript under NSH v0.5.1, for `packages/nsh-ocr` and `examples/demo`: `nsh check`; `nsh build` with no warning in its log; `nsh test`. The job runs `examples/demo/fetch-models.sh` first, because the demo's bundle imports the model files.
 
 The rules behind the gates:
 
@@ -24,7 +24,7 @@ The rules behind the gates:
 - **Parity.** Every public API of the two references has a row in `docs/parity.md`.
 - **Layout.** `crates/nsh-ocr` plus `packages/nsh-ocr`, like biometrics: same names, same behaviour, same error wording in Rust and TSX.
 
-Every gate runs in GitHub Actions. Nothing in this repo is verified until a run on `master` passes; until then every status claim, including everything below, is unverified (AGENTS.md).
+Every gate runs in GitHub Actions on every push, and CI has run green on `master` since 2026-11-11; the claims below are backed by those runs (AGENTS.md).
 
 ## Errors
 
@@ -36,7 +36,7 @@ Ten kinds, each with a stable code and a frozen message, identical in the Rust c
 | UnsupportedLanguage | `ERR_OCR_UNSUPPORTED_LANGUAGE` | This script is not supported by this recognizer. | Apple: the script's primary language is missing from the request's runtime-queried `supportedRecognitionLanguages`, checked before starting. Windows: `TryCreateFromLanguage` fails — no installed recognizer language matches. Linux/web: any script other than Latin. Android: never — each of the five scripts has its own bundled recognizer. | Vision's unsupported recognition language. |
 | ModelNotLoaded | `ERR_OCR_MODEL_NOT_LOADED` | The recognition model files were not provided or are incompatible. | Linux/web only: `use_ocrs_models` was never called, or the detection or recognition bytes fail to parse. Never on Apple, Android or Windows — the OS or the app bundle ships the model. | ocrs' `DetectionModelNotLoaded`, `RecognitionModelNotLoaded` and `IncompatibleModel`. |
 | InvalidImage | `ERR_OCR_INVALID_IMAGE` | The image is empty, unreadable, or has the wrong shape. | Every platform, before any work: `Encoded` bytes empty, or `Rgba` with a zero dimension or `data.len() != width * height * 4`. Then per platform: Apple — bytes `CGImageSource` cannot decode; Android — bytes `BitmapFactory` cannot decode into an `InputImage`; Windows — bytes `BitmapDecoder` cannot decode; Linux/web — bytes the `image` crate cannot decode. | ML Kit's undecodable `InputImage`; the bad bytes behind a bad `imagePath`. |
-| InvalidArgument | `ERR_OCR_INVALID_ARGUMENT` | An argument is empty or not allowed on this platform. | Every platform, before any work: `timeout_ms` is `Some(0)`; on TSX, a script name outside the five. | The Flutter plugin's `invalid_args`. |
+| InvalidArgument | `ERR_OCR_INVALID_ARGUMENT` | An argument is empty or not allowed on this platform. | Every platform, before any work: `timeout_ms` is `Some(0)` in the core; on TSX, a script name outside the five, refused in the TS package (`recognizer.ts`) before the backend and again in the Rust bridge. | The Flutter plugin's `invalid_args`. |
 | IoFailed | `ERR_OCR_IO_FAILED` | The image file could not be read. | Every platform, in the native TSX layer only: reading the `path` handed to `processImage` fails. The Rust core never raises it — it takes bytes, not paths. | The RN module's `recognizeText(imagePath)` on an unreadable path. |
 | Closed | `ERR_OCR_CLOSED` | This recognizer is closed. | Every platform, in the core: `processImage` after `close()`. | ML Kit's closed-recognizer state. |
 | Cancelled | `ERR_OCR_CANCELLED` | The recognition was cancelled. | Every platform, in the core: `cancel()` with a call pending, or `close()` with a call in flight. No platform reports it itself. | The user- or app-cancelled scan. |
@@ -78,8 +78,12 @@ The matrix below is frozen: these rows, these names, these files, in both langua
 
 ### Known gaps
 
-Cases the references handle that no matrix row above tests; all untested:
+Cases the references handle that no matrix row above tests:
 
-- Non-empty `Encoded` bytes a platform decoder cannot decode: the references fail this inside the platform (ML Kit's `InputImage`, `CGImageSource`, `BitmapDecoder`), and our contract makes it the backend's `ERR_OCR_INVALID_IMAGE`; the matrix only refuses empty or mis-shaped input at validation (rows 12-14).
-- The platform conversions — Vision's normalized bottom-left boxes to pixel top-left rects, Windows' RGBA-to-BGRA — mirror the references' mapping layers and are covered only by inline unit tests inside the platform files, which run on the one runner that compiles each platform.
-- No CI runner holds a real engine or model files: every matrix row drives `FakeBackend` or `memoryBackend`, and CI has no emulator or device job, so actual recognition on Apple, Android, Windows, Linux or web is untested in this repo. Android alone has a manual path: CI packages `examples/demo` into an installable APK (the run's `demo-android` artifact, arm64, Latin model only) so recognition can be checked on a real device by hand.
+- Non-empty `Encoded` bytes a platform decoder cannot decode: the references fail this inside the platform (ML Kit's `InputImage`, `CGImageSource`, `BitmapDecoder`), and our contract makes it the backend's `ERR_OCR_INVALID_IMAGE`; the matrix only refuses empty or mis-shaped input at validation (rows 12-14). The ocrs decoder's refusal is unit-tested (`decode_encoded_rejects_garbage_as_invalid_image` in `platform/ocrs.rs`, run on the Linux runner); the Apple, Android and Windows refusals compile only.
+- The platform conversions — Vision's normalized bottom-left boxes to pixel top-left rects, Windows' RGBA-to-BGRA — mirror the references' mapping layers and are covered by inline unit tests inside the platform files. Cross-target clippy's `--all-targets` compiles every bridge's tests on its own target, android and wasm included; they still only run where a CI runner's OS matches the bridge (apple on macOS, windows on Windows, ocrs on Linux), so the android and wasm bridges' tests never run.
+- No CI runner holds a real engine: every matrix row drives `FakeBackend` or `memoryBackend`, and CI has no emulator or device job, so recognition is not exercised by an automated test. The demo is built for nine targets and published — the `latest` release's downloads and the web demo on Pages — so recognition can be checked by hand on every platform, not Android alone.
+
+Two limits on the TypeScript side, named by the audit: a TS promise cannot be dropped, so row 8's TS test drives `cancel()` instead of dropping the call; and the platform status (row 17) is a Rust-side field that does not cross the bridge, so the TS test pins the code and the frozen message.
+
+`use_ocrs_models` (TSX: `useOcrsModels`) hands the ocrs engine its model bytes. It is static on the native class and wrapped by the TS package; the bytes are parsed eagerly, and a later call replaces them. Engines that need no models (Apple, Android, Windows) answer `ERR_OCR_NOT_AVAILABLE`; unparsable bytes are `ERR_OCR_MODEL_NOT_LOADED`. Covered by `junk_models_fail_to_parse_and_store_nothing` in `native.rs` (Linux; everywhere else `models_are_not_available_without_the_ocrs_engine`) and the TS test `useOcrsModels rejects junk bytes with the host's honest code`.

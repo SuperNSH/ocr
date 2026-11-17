@@ -5,12 +5,12 @@ Recognise text in images.
 ## Options
 
 - Vision VNRecognizeTextRequest: Apple, native
-- ocrs: pure Rust; ships model files; pre-1.0 and breaking releases
+- ocrs: pure Rust; the app ships its model files; pre-1.0 and breaking releases
 - ML Kit text recognition: Android, reference
 
 ## Recommended path
 
-Vision on Apple, queried at runtime for supported languages. ocrs elsewhere, with pinned versions.
+Vision on Apple, queried at runtime for supported languages. ML Kit text recognition v2 on Android. `Windows.Media.Ocr` on Windows. ocrs, pinned and with model files the app ships, on Linux and web (wasm32). Every other target answers `ERR_OCR_NOT_AVAILABLE`.
 
 ## Edge cases to design for
 
