@@ -1,5 +1,11 @@
 import { expect, test } from "nsh/test";
-import { TextRecognizer, memoryBackend, type ImageInput, type RecognizedText } from "../src";
+import {
+  TextRecognizer,
+  memoryBackend,
+  type ImageInput,
+  type RecognizedText,
+  type Script,
+} from "../src";
 
 /** Any non-empty payload: validation passes, and the memory backend decodes nothing. */
 function image(): ImageInput {
@@ -143,6 +149,15 @@ test("a zero timeout is refused as an invalid argument", async () => {
   await expect(recognizer.processImage(image(), { timeoutMs: 0 })).rejects.toMatchObject({
     code: "ERR_OCR_INVALID_ARGUMENT",
   });
+  expect(backend.started()).toBe(0);
+});
+
+test("a script outside the five is refused as an invalid argument", async () => {
+  const backend = memoryBackend();
+  const recognizer = new TextRecognizer({ backend });
+  await expect(
+    recognizer.processImage(image(), { script: "cyrillic" as Script }),
+  ).rejects.toMatchObject({ code: "ERR_OCR_INVALID_ARGUMENT" });
   expect(backend.started()).toBe(0);
 });
 

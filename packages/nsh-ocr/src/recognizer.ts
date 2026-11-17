@@ -1,7 +1,7 @@
 import type { OcrBackend } from "./backend";
 import { asOcrError, ocrError, type OcrError } from "./errors";
 import { validateImageInput, type ImageInput } from "./input";
-import type { RecognitionOptions, Script } from "./options";
+import { SCRIPT_LANGUAGES, type RecognitionOptions, type Script } from "./options";
 import { rustBackend } from "./rust";
 import type { RecognizedText } from "./text";
 
@@ -48,6 +48,11 @@ export class TextRecognizer {
     try {
       validateImageInput(image);
       if (options.timeoutMs !== undefined && !(options.timeoutMs > 0)) {
+        throw ocrError("ERR_OCR_INVALID_ARGUMENT");
+      }
+      // A script outside the five is refused here as the Rust bridge refuses it, so a
+      // memory backend sees the same validation the native one does.
+      if (options.script !== undefined && !(options.script in SCRIPT_LANGUAGES)) {
         throw ocrError("ERR_OCR_INVALID_ARGUMENT");
       }
       if (this.closed) throw ocrError("ERR_OCR_CLOSED");

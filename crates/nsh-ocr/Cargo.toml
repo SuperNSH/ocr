@@ -45,8 +45,8 @@ windows-future = { version = "0.3.2", features = ["std"] }
 [target.'cfg(any(target_os = "linux", target_arch = "wasm32"))'.dependencies]
 # ocrs breaks APIs across pre-1.0 releases; 0.14.0 is the verified pin.
 ocrs = "0.14.0"
-# default-features = false enables no model format; rten_format loads the .model bytes.
-rten = { version = "0.28", default-features = false, features = ["rten_format"] }
+# default-features = false enables no model format; rten auto-detects .rten/.onnx, and the public ocrs models are .onnx.
+rten = { version = "0.28", default-features = false, features = ["rten_format", "onnx_format"] }
 # Only to decode Encoded bytes inside the ocrs backend.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 

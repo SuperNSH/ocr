@@ -1,6 +1,6 @@
 import { expect, test } from "nsh/test";
-import { TextRecognizer, memoryBackend, type ImageInput, type RecognizedText } from "../src";
-import { MESSAGES, type OcrErrorCode } from "../src/errors";
+import { TextRecognizer, memoryBackend, useOcrsModels, type ImageInput, type RecognizedText } from "../src";
+import { MESSAGES, OcrError, type OcrErrorCode } from "../src/errors";
 
 /** Any non-empty payload: validation passes, and the memory backend decodes nothing. */
 function image(): ImageInput {
@@ -133,4 +133,22 @@ test("a model error resolves with the model code", async () => {
   await settle(() => backend.pending());
   expect(backend.finishRecognition(text("runs"))).toBe(true);
   expect((await call).text).toBe("runs");
+});
+
+test("useOcrsModels rejects junk bytes with the host's honest code", async () => {
+  // The two honest outcomes per host: an ocrs engine (Linux, web) fails to parse the
+  // bytes, an engine that needs no models refuses the call. CI's ubuntu job hits the
+  // first, a macOS host the second.
+  const junk = new Uint8Array([1, 2, 3]);
+  const failure = await useOcrsModels(junk, junk).then(
+    () => {
+      throw new Error("junk bytes must not resolve as models");
+    },
+    (error: unknown) => error,
+  );
+  expect(failure instanceof OcrError).toBe(true);
+  expect(failure instanceof OcrError && failure.message.length > 0).toBe(true);
+  expect(["ERR_OCR_MODEL_NOT_LOADED", "ERR_OCR_NOT_AVAILABLE"]).toContain(
+    failure instanceof OcrError ? failure.code : "not an OcrError",
+  );
 });

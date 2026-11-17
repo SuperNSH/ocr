@@ -13,6 +13,18 @@ export function rustBackend(): OcrBackend {
   return new RustBackend();
 }
 
+/**
+ * Supplies the ocrs engine's model bytes (Linux and the web), parsed now so broken bytes
+ * fail here. Targets whose engine needs no models reject with `ERR_OCR_NOT_AVAILABLE`.
+ */
+export async function useOcrsModels(detection: Uint8Array, recognition: Uint8Array): Promise<void> {
+  try {
+    await NativeTextRecognizer.useOcrsModels(detection, recognition);
+  } catch (error) {
+    throw asOcrError(error);
+  }
+}
+
 function nativeImage(image: ImageInput): NativeImageInput {
   if ("path" in image) return { path: image.path };
   if ("encoded" in image) return { encoded: image.encoded };

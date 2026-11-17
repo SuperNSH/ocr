@@ -105,6 +105,12 @@ impl NativeTextRecognizer {
         }
     }
 
+    /// Supplies the ocrs engine's model bytes (Linux and the web), parsed now so broken
+    /// bytes fail here. Targets whose engine needs no models reject with `ERR_OCR_NOT_AVAILABLE`.
+    pub async fn use_ocrs_models(detection: Vec<u8>, recognition: Vec<u8>) -> Result<(), JsError> {
+        set_models(detection, recognition).map_err(into_js)
+    }
+
     /// The BCP-47 languages this recognizer can read now.
     pub async fn supported_languages(this: Instance<Self>) -> Result<Vec<String>, JsError> {
         let recognizer = this.with(|native| native.recognizer.clone());
@@ -167,9 +173,11 @@ fn script_from_name(name: &str) -> Option<Script> {
 }
 
 /// Turns the TSX input into the crate's. A `path` is read here; a read failure is
-/// [`crate::ErrorKind::IoFailed`]. More than one variant set is an invalid argument.
+/// [`crate::ErrorKind::IoFailed`], an empty one an invalid image, as the TS side's
+/// validation has it. More than one variant set is an invalid argument.
 fn to_image_input(image: NativeImageInput) -> Result<ImageInput, OcrError> {
     match (image.path, image.encoded, image.rgba) {
+        (Some(path), None, None) if path.is_empty() => Err(OcrError::new(ErrorKind::InvalidImage)),
         (Some(path), None, None) => std::fs::read(&path)
             .map(ImageInput::Encoded)
             .map_err(|_| OcrError::new(ErrorKind::IoFailed)),
@@ -195,6 +203,21 @@ fn to_options(options: NativeRecognitionOptions) -> Result<RecognitionOptions, O
         script,
         timeout_ms: options.timeout_ms,
     })
+}
+
+/// Hands the model bytes to the ocrs engine, which parses them eagerly. A target without
+/// ocrs has no engine to load models for: the call is not available.
+fn set_models(detection: Vec<u8>, recognition: Vec<u8>) -> Result<(), OcrError> {
+    #[cfg(any(target_os = "linux", target_arch = "wasm32"))]
+    {
+        crate::platform::ocrs::use_ocrs_models(detection, recognition)
+    }
+    #[cfg(not(any(target_os = "linux", target_arch = "wasm32")))]
+    {
+        // The bytes have nowhere to go; drop them instead of tripping the unused check.
+        let _ = (detection, recognition);
+        Err(OcrError::new(ErrorKind::NotAvailable))
+    }
 }
 
 /// Maps the core's answer to the TSX one; the geometry passes through unchanged.
@@ -331,6 +354,33 @@ mod tests {
         })
         .unwrap_err();
         assert_eq!(error.kind(), ErrorKind::IoFailed);
+    }
+
+    #[test]
+    fn an_empty_path_is_an_invalid_image() {
+        // The TS side's validation refuses it before the bridge; the bridge must agree.
+        let error = to_image_input(NativeImageInput {
+            path: Some(String::new()),
+            encoded: None,
+            rgba: None,
+        })
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidImage);
+    }
+
+    #[cfg(any(target_os = "linux", target_arch = "wasm32"))]
+    #[test]
+    fn junk_models_fail_to_parse_and_store_nothing() {
+        // The engine parses eagerly, so junk fails here and no model is stored.
+        let error = set_models(b"junk".to_vec(), b"junk".to_vec()).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::ModelNotLoaded);
+    }
+
+    #[cfg(not(any(target_os = "linux", target_arch = "wasm32")))]
+    #[test]
+    fn models_are_not_available_without_the_ocrs_engine() {
+        let error = set_models(b"junk".to_vec(), b"junk".to_vec()).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::NotAvailable);
     }
 
     #[test]

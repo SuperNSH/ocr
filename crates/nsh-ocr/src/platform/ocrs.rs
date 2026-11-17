@@ -1,7 +1,7 @@
 //! ocrs text-recognition backend for Linux and wasm32.
 //!
 // Pinned in Cargo.toml: ocrs 0.14.0, rten 0.28.0, image 0.25 (png + jpeg). rten with
-// default-features = false needs a model-format feature: "rten_format" for .rten bytes.
+// default-features = false needs model-format features: "rten_format" and "onnx_format".
 
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, PoisonError};
 

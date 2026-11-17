@@ -13,4 +13,4 @@ export {
   type Rect,
   type Point,
 } from "./text";
-export { rustBackend } from "./rust";
+export { rustBackend, useOcrsModels } from "./rust";
