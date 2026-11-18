@@ -1,5 +1,19 @@
 # Audit
 
+## Status at `609c276` (2026-11-18, NSH 0.6.0)
+
+The audit below is a snapshot of `3d55e31`; it is kept as written. Since then the gaps it rowed are closed on `master`:
+
+- G1: `use_ocrs_models` is bridged to TSX (`NativeTextRecognizer.useOcrsModels`, `useOcrsModels` in `packages/nsh-ocr/src/rust.ts`), covered by `junk_models_fail_to_parse_and_store_nothing` and the TS test "useOcrsModels rejects junk bytes with the host's honest code".
+- G3: the typescript job runs `nsh check`, a warning-free `nsh build` and `nsh test` for `examples/demo` as well as the package.
+- G4, G5, G6: the demo is built for nine targets, the `latest` release is replaced on every push, and the web demo is deployed to Pages (`ci.yml`, jobs `demo`, `publish`, `pages`).
+- Stale rows (README status, NSH 0.4.0/0.5.x pins, the site status page) are fixed; the NSH pin is 0.6.0.
+- All 26 frozen matrix rows exist under their frozen names in both languages (checked by script against `docs/goals.md`).
+
+Verified by CI run https://github.com/SuperNSH/ocr/actions/runs/44376359307, conclusion success after one rerun of its failed jobs: format, rust (ubuntu, macos, windows), check (aarch64-apple-ios, aarch64-apple-ios-sim, aarch64-linux-android, wasm32-unknown-unknown), typescript, all nine demo builds, publish the latest build, and the Pages deploy. The first attempt's two iOS checks were cancelled before running a step (macOS runner queue starvation), and passed on rerun.
+
+Still blocked: recognition on a real engine is not exercised by any automated test, because no CI runner holds a device, emulator or engine. The Apple, Android and Windows bridges compile in CI and are checked by hand through the demo builds.
+
 Every claim in this repo's planning documents, checked against the code and tests on `master` at `3d55e31` (2026-11-17). Evidence is a file:line I read, a test body, or a read-only command (`gh run list`, `gh release list`, `curl -sI`). Nothing was built or run.
 
 CI evidence used throughout: `gh run list --limit 5` shows CI green on `master` — run 44000499013 (2026-11-17, "build: move to NSH 0.5.1"), 43202528722 (2026-11-12), 42958520901 (2026-11-11) — and Pages green (44000498357, 2026-11-17). So every test named below has a passing run behind it.
