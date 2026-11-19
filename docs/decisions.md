@@ -48,8 +48,10 @@ These three entries resolve the scaffold's open decisions 1–3 (NSH version, li
 
 The demo is packaged for nine targets (macOS, Linux and Windows on both
 architectures, the iOS simulator, Android, the web); this shell is the android
-entry of that matrix. NSH 0.5.0 writes the Android APK itself and offers no way
-to add Java code or libraries, but the Android bridge needs both: the
+entry of that matrix. NSH 0.6.0 writes the Android APK itself and offers no way
+to add Java code or libraries (`nsh-cli/src/android.rs` copies only the runtime's
+`classes.dex`, and `nsh.json`'s `android` object takes `targetSdk` and
+`usesCleartextTraffic` only), but the Android bridge needs both: the
 `dev.supernsh.ocr.NativeCallback` class (source in
 `crates/nsh-ocr/src/platform/android.rs`) and ML Kit's artifacts, which carry
 Android resources a hand merge cannot combine. So CI builds a thin Gradle app
