@@ -6,7 +6,8 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-publish = false
+readme = "../../README.md"
+keywords = ["nshm", "nsh", "ocr", "text-recognition", "image"]
 
 [lib]
 name = "nsh_ocr"

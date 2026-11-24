@@ -4,6 +4,18 @@ Recognise text in images.
 
 Part of the Native Shell (NSH) capability set. Same layout as the other SuperNSH repos: a Rust crate and a TypeScript package, docs in `docs/`, CI on GitHub Actions. The names follow Flutter's [`google_mlkit_text_recognition`](https://pub.dev/packages/google_mlkit_text_recognition) and the React Native module [`react-native-mlkit-text-recognition`](https://www.npmjs.com/package/@infinitered/react-native-mlkit-text-recognition), so an app that knows either knows this one; `docs/parity.md` maps every reference API to its Rust and TSX counterpart.
 
+## Install
+
+In the app's directory:
+
+```sh
+nsh add nsh-ocr
+```
+
+`nsh add` needs NSH main or the nightly: the 0.6.0 and 0.6.1 releases do not have it. In a Rust app, `cargo add nsh-ocr` works with any of them.
+
+In TSX, import from `nsh-ocr`, `nsh-ocr/rust` and `nsh-ocr/memory`.
+
 ## Status
 
 Implemented. The crate in `crates/nsh-ocr/` and the package in `packages/nsh-ocr/` are written against the frozen contract: ten coded errors, image input as a file path, encoded bytes or RGBA pixels, five scripts, a recognizer whose calls resolve exactly once, and bridges to Apple Vision, Android ML Kit, `Windows.Media.Ocr` and ocrs. All gates run in CI and the tests are green on `master`'s runs. The bridges compile on every target, but no CI runner holds an engine or a device, so recognition on a device or desktop is checked by hand through the demo builds below — and the web demo runs real recognition in the browser. Read [docs/brief.md](docs/brief.md) for the approach and [docs/parity.md](docs/parity.md) for the row-by-row status.
