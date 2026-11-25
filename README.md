@@ -12,7 +12,7 @@ In the app's directory:
 nsh add nsh-ocr
 ```
 
-`nsh add` needs NSH 0.7.0 or later: the 0.6.x releases do not have it.
+Needs NSH 0.7.1 or later.
 
 In TSX, import from `nsh-ocr`, `nsh-ocr/rust` and `nsh-ocr/memory`.
 

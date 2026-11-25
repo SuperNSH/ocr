@@ -32,9 +32,9 @@ Rejected: `agoldis/react-native-mlkit-ocr` — archived by its owner on 2025-12-
 
 These three entries resolve the scaffold's open decisions 1–3 (NSH version, library choice, platforms in scope).
 
-## NSH is pinned to 0.7.0
+## NSH is pinned to 0.7.1
 
-`nsh-core = "0.7.0"` from crates.io (resolves to 0.7.1); CI installs the NSH CLI at `NSH_VERSION: v0.7.1`. The pin moved from 0.4.0 to 0.5.0 on 2026-11-12, and to the 0.5.1 bug-fix release on 2026-11-17, and to 0.6.0 on 2026-11-18, and to 0.7.0 on 2026-11-25. `longbridge/nsh` `main` is ahead of the release, so anything read in `.refs/nsh` is checked against the v0.7.1 tag before it is relied on.
+`nsh-core = "0.7.1"` from crates.io; CI installs the NSH CLI at `NSH_VERSION: v0.7.1`. The pin moved from 0.4.0 to 0.5.0 on 2026-11-12, and to the 0.5.1 bug-fix release on 2026-11-17, and to 0.6.0 on 2026-11-18, and to 0.7.1 on 2026-11-25. `longbridge/nsh` `main` is ahead of the release, so anything read in `.refs/nsh` is checked against the v0.7.1 tag before it is relied on.
 
 ## The input is encoded bytes or raw RGBA
 
