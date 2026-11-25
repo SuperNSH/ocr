@@ -1,7 +1,7 @@
 //! Android: ML Kit text recognition v2, reached over JNI.
 //!
-//! The VM comes from `ndk-context`; this module installs it once with the pattern
-//! `nsh-biometrics` uses, because NSH 0.6.0 does not start `ndk-context` itself (none of its crates uses it). The app's APK must
+//! The VM comes from `ndk-context`. NSH 0.7.1 sets it when its first view is made; this module
+//! adopts that, and sets it only when nothing has (the pattern `nsh-biometrics` uses). The app's APK must
 //! carry the ML Kit v2 dependencies (`com.google.mlkit:text-recognition` 16.0.1 plus the
 //! `-chinese`, `-devanagari`, `-japanese` and `-korean` artifacts) and this bridge class,
 //! which turns ML Kit's task listeners into native calls:
@@ -30,9 +30,9 @@
 //! }
 //! ```
 //!
-//! NSH 0.6.0 writes the Android packaging itself and offers no way to add Java (`nsh-cli`'s
-//! `android.rs` adds only the runtime's `classes.dex`), so the app adds the class to the
-//! generated project, the way `nsh-biometrics` documents adding the biometric permission. Without those classes recognition answers `ERR_OCR_NOT_AVAILABLE`.
+//! NSH 0.7.1 takes Java libraries through `nsh.json`'s `android.libraries`, but the demo's
+//! Gradle shell adds this class to the generated project instead (see `docs/decisions.md`).
+//! Without those classes recognition answers `ERR_OCR_NOT_AVAILABLE`.
 
 // jni 0.22.4 and ndk-context 0.1.1, the pins Cargo.toml declares for `target_os = "android"`.
 

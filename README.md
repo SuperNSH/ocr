@@ -12,7 +12,7 @@ In the app's directory:
 nsh add nsh-ocr
 ```
 
-`nsh add` needs NSH main or the nightly: the 0.6.0 and 0.6.1 releases do not have it. In a Rust app, `cargo add nsh-ocr` works with any of them.
+`nsh add` needs NSH 0.7.0 or later: the 0.6.x releases do not have it.
 
 In TSX, import from `nsh-ocr`, `nsh-ocr/rust` and `nsh-ocr/memory`.
 
@@ -59,7 +59,7 @@ Every compile and test runs in GitHub Actions. Nothing is built on a developer m
 - `cargo fmt --all -- --check`.
 - Clippy (`-D warnings`) and the test suite on Linux, macOS and Windows.
 - A cross-target Clippy check for `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-linux-android` and `wasm32-unknown-unknown`, each with `--all-targets`, so every bridge's inline unit tests are parsed on their own target.
-- The TypeScript package and the demo under NSH v0.6.0: `nsh check`, a warning-free `nsh build`, `nsh test`.
+- The TypeScript package and the demo under NSH v0.7.1: `nsh check`, a warning-free `nsh build`, `nsh test`.
 
 On `master`, after those pass, CI packages the demo for nine targets: macOS, Linux and Windows on both architectures, the iOS simulator, Android, and the web. The Android build goes through a Gradle shell (`examples/demo/android/`) that merges ML Kit and the JNI callback class into NSH's APK; the other eight build straight from `nsh package`. The nine builds replace the `latest` release (the downloads in [Try the demo](#try-the-demo)), and the web build is deployed to GitHub Pages at https://supernsh.github.io/ocr/.
 

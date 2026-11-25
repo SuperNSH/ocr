@@ -15,7 +15,7 @@ The gates, all in `.github/workflows/ci.yml`:
 - `cargo fmt --all -- --check` (ubuntu-latest).
 - `cargo clippy -p nsh-ocr --all-targets --all-features -- -D warnings`, then `cargo test -p nsh-ocr --all-features --no-fail-fast`, on ubuntu-latest, macos-latest and windows-latest, fail-fast off.
 - Cross-target clippy — `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-linux-android` (biometrics' NDK env block) and `wasm32-unknown-unknown` — with `cargo clippy -p nsh-ocr --target <target> --all-targets --all-features -- -D warnings`. `--all-targets` parses each bridge's inline unit tests on its own target, where no runner can run them (the android and wasm bridges' only CI check).
-- TypeScript under NSH v0.6.0, for `packages/nsh-ocr` and `examples/demo`: `nsh check`; `nsh build` with no warning in its log; `nsh test`. The job runs `examples/demo/fetch-models.sh` first, because the demo's bundle imports the model files.
+- TypeScript under NSH v0.7.1, for `packages/nsh-ocr` and `examples/demo`: `nsh check`; `nsh build` with no warning in its log; `nsh test`. The job runs `examples/demo/fetch-models.sh` first, because the demo's bundle imports the model files.
 
 The rules behind the gates:
 
